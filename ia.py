@@ -7,6 +7,7 @@ import sys
 import argparse
 import fileinput
 import codecs
+from pprint import pprint
 from collections import namedtuple, defaultdict, Counter
 
 larc_t = namedtuple('LArc', 'label begin end children')
@@ -19,14 +20,15 @@ class Lattice:
     """
     def __init__(self, seq, debug=False):
         self.debug = debug
+        self.body = [x for x in seq]
         self.lattice = [{larc_t(BOS, 0, 1, ()): 0}]
-        for (i,x) in enumerate(seq):
+        for (i,x) in enumerate(self.body):
             self.lattice.append({larc_t(x, i+1, i+2, ()): 0})
         self.lattice.append({larc_t(EOS, len(self.lattice), len(self.lattice)+1, ()): 0})
 
-    def find_arc(self, label, begin, end):
-        for n in self.lattice:
-            if n.labe == label and n.begin == begin and n.end == end:
+    def find_arc(self, begin, end, targets):
+        for n in cell[begin].keys():
+            if n.begin == begin and n.end == end and n.targets == targets:
                 return n
         return None
 
@@ -41,11 +43,13 @@ class Lattice:
                 yield i
 
     def add_confirmed_arc(self, label, targets, begin, end):
+        if not isinstance(targets, tuple):
+            targets = tuple(targets)
         if self.debug:
             for t in targets:
-                if not self.find_arc(t.label, t.begin, t.end):
+                if not self.find_arc(t.begin, t.end):
                     raise
-        self.lattice.append([larc_t(label, begin, end, targets), 1])
+        self.lattice[begin][larc_t(label, begin, end, targets)] = 1
 
     def __repr__(self):
         return 'Lattice(%s)' % self.lattice
@@ -99,13 +103,20 @@ if __name__ == '__main__':
 
 
     arc_id = 1
-    while True:
-        for k in lexicon.most_frequent():
-            print k
-            p = raw_input('? ')
-            if p.lower()[0] != 'n':
-                lexicon.add_confirmed(k)
-                # TODO: implement # lattice.add_confirmed_arc(arc_id)
-            else:
-                lexicon.add_declined(k)
-            break
+    try:
+        while True:
+            for k in lexicon.most_frequent():
+                print >>sys.stderr, k
+                p = raw_input()
+                if len(p) > 0 and p.lower()[0] != 'n':
+                    lexicon.add_confirmed(k)
+                    for p in lattice.find_positions(k):
+                        lattice.add_confirmed_arc(arc_id, (), p, p+len(k))
+                        arc_id += 1
+                else:
+                    lexicon.add_declined(k)
+                break
+    except EOFError:
+        None
+    pprint(lexicon)
+    pprint(lattice)
