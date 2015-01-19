@@ -18,13 +18,36 @@ class TestIA(unittest.TestCase):
 
     def test_cons_table(self):
         self.assertEquals(ia.Lexicon(3, [x for x in 'abracadabra']).counts,
-                          Counter({('b', 'r', 'a'): 2,
+                          Counter({('<BOS>', 'a', 'b'): 1,
+                                   ('r', 'a', '<EOS>'): 1,
+                                   ('b', 'r', 'a'): 2,
                                    ('a', 'b', 'r'): 2,
                                    ('a', 'c', 'a'): 1,
                                    ('r', 'a', 'c'): 1,
                                    ('d', 'a', 'b'): 1,
                                    ('a', 'd', 'a'): 1,
                                    ('c', 'a', 'd'): 1}))
+
+    def test_dot_simple(self):
+        lattice = ia.Lattice(x for x in 'abc')
+        lattice.add_confirmed_arc('A', (), 1, 3)
+        self.assertEquals(lattice.to_dot_from_span(0, 3).strip(), '''
+strict digraph  {
+node[shape=none];
+
+subgraph cluster_body{
+    graph[style=invis];
+    edge[style=dotted, arrowhead=none];
+    node[shape=point, label=""];
+
+B_0 -> B_1 [label="<BOS>"];
+B_1 -> B_2 [label="a"];
+B_2 -> B_3 [label="b"];
+}
+B_1 -> A_1 -> B_3;
+A_1 node [label="A"];
+}
+        '''.strip())
         
 if __name__ == '__main__':
     unittest.main()
