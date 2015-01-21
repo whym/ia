@@ -28,26 +28,37 @@ class TestIA(unittest.TestCase):
                                    ('a', 'd', 'a'): 1,
                                    ('c', 'a', 'd'): 1}))
 
+    def test_sentences(self):
+        lattice = ia.Lattice(['<BOS>'] + [x for x in 'abc'] + ['<EOS>', '<BOS>'] + [x for x in 'de'] + ['<EOS>'])
+        print lattice.body
+        print lattice.lattice
+        self.assertEquals(lattice.sentences(),
+                          [(0,4), (5,8)])
+
     def test_dot_simple(self):
         lattice = ia.Lattice(x for x in 'abc')
         lattice.add_confirmed_arc('A', (), 1, 3)
-        self.assertEquals(lattice.to_dot_from_span(0, 3).strip(), '''
+        self.assertEquals(lattice.to_dot().strip(), '''
+
 strict digraph  {
+rankdir=LR;
 node[shape=none];
 page="8.5,11";
 charset="UTF-8";
 
-subgraph cluster_body{
+subgraph cluster_c3{
     graph[style=invis];
     edge[style=dotted, arrowhead=none];
     node[shape=point, label=""];
 
-B_0 -> B_1 [label="<BOS>"];
-B_1 -> B_2 [label="a"];
-B_2 -> B_3 [label="b"];
+P_c3_0 -> P_c3_1 [label="<BOS>"];
+P_c3_1 -> P_c3_2 [label="a"];
+P_c3_2 -> P_c3_3 [label="b"];
+P_c3_3 -> P_c3_4 [label="c"];
 }
-B_1 -> A_1 -> B_3;
-A_1 node [label="A"];
+P_c3_1 -> A_c3_1 -> P_c3_3;
+A_c3_1 node [label="A"];
+
 }
         '''.strip())
         

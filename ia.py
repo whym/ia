@@ -17,16 +17,23 @@ EOS = '<EOS>'
 
 class Lattice:
     """
-    Lattice is composed with a list of arcs and instance scores.
+    A Lattice is composed with lists of arcs and scores.
     """
     def __init__(self, seq, debug=False):
         self.debug = debug
         self.body = [BOS]
+        self.sent_heads = [0];
         self.lattice = [{larc_t(BOS, 0, 1, ()): 0}]
         for (i,x) in enumerate(seq):
+            if i == 0 and x == BOS:
+                continue
+            self.lattice.append({larc_t(x, len(self.body), len(self.body) + 1, ()): 0}) # adding 1 for 0:BOS
+            if x == EOS:
+                self.sent_heads.append(len(self.body) + 1)
             self.body.append(x)
-            self.lattice.append({larc_t(x, i+1, i+2, ()): 0}) # adding 1 for 0:BOS
-        self.lattice.append({larc_t(EOS, len(self.lattice), len(self.lattice) + 1, ()): 0})
+
+        if self.body[-1] != EOS:
+            self.lattice.append({larc_t(EOS, len(self.lattice), len(self.lattice) + 1, ()): 0})
 
     def find_arc(self, begin, end, targets):
         for n in cell[begin].keys():
@@ -55,23 +62,34 @@ class Lattice:
     def __repr__(self):
         return 'Lattice(%s)' % self.lattice
 
-    def to_dot_from_span(self, begin, end):
-        lines = []
+    def sentences(self):
+        return [(i,j-1) for (i,j) in zip(self.sent_heads, self.sent_heads[1:]+[len(self.lattice) - 1]) if i < j]
 
-        # edges for the body string
-        lines.append('''
+    def to_dot(self):
+        dots = [self.to_partial_dot_from_span(x, y) for (x,y) in self.sentences()]
+        return '''
 strict digraph  {
+rankdir=LR;
 node[shape=none];
 page="8.5,11";
 charset="UTF-8";
+%s
 
-subgraph cluster_body{
+}''' % ('\n'.join(dots))
+
+    def to_partial_dot_from_span(self, begin, end):
+        lines = []
+        cluster = 'c%d' % end
+
+        # edges for the body string
+        lines.append('''
+subgraph cluster_%s{
     graph[style=invis];
     edge[style=dotted, arrowhead=none];
     node[shape=point, label=""];
-''')
-        for i in xrange(begin, end):
-            lines.append('B_%d -> B_%d [label="%s"];' % (i, i+1, self.body[i].replace('"', "'")))
+''' % cluster)
+        for i in xrange(begin, end+1):
+            lines.append('P_%s_%d -> P_%s_%d [label="%s"];' % (cluster, i, cluster, i+1, self.body[i].replace('"', "'")))
         lines.append('}')
 
         # edges for (syntactic) arcs
@@ -79,10 +97,9 @@ subgraph cluster_body{
         for p in xrange(begin, end):
             for arc in self.lattice[p].keys():
                 if arc.end <= end and arc.end > arc.begin + 1:
-                    lines.append('B_%d -> A_%d -> B_%d;' % (arc.begin, n, arc.end))
-                    lines.append('A_%d node [label="%s"];' % (n, arc.label))
+                    lines.append('P_%s_%d -> A_%s_%d -> P_%s_%d;' % (cluster, arc.begin, cluster, n, cluster, arc.end))
+                    lines.append('A_%s_%d node [label="%s"];' % (cluster, n, arc.label))
                     n += 1
-        lines.append('}')
         return '\n'.join(lines)
 
 class Lexicon:
@@ -165,7 +182,7 @@ if __name__ == '__main__':
                     for pos in lattice.find_positions(k):
                         lattice.add_confirmed_arc(arc_id, (), pos, pos+len(k))
                         arc_id += 1
-                    dot = lattice.to_dot_from_span(0, min(1000, len(lattice.body)))
+                    dot = lattice.to_dot()
                     if options.output.endswith('.dot'):
                         print >>codecs.open(options.output, 'w', encoding='utf-8'), dot
                     else:
