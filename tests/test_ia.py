@@ -34,6 +34,8 @@ class TestIA(unittest.TestCase):
         self.assertEquals(lattice.to_dot_from_span(0, 3).strip(), '''
 strict digraph  {
 node[shape=none];
+page="8.5,11";
+charset="UTF-8";
 
 subgraph cluster_body{
     graph[style=invis];

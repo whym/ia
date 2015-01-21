@@ -62,6 +62,8 @@ class Lattice:
         lines.append('''
 strict digraph  {
 node[shape=none];
+page="8.5,11";
+charset="UTF-8";
 
 subgraph cluster_body{
     graph[style=invis];
